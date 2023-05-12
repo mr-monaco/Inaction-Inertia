@@ -1,0 +1,613 @@
+# Packages for analysis
+#install.packages("readxl")
+#install.packages("dplyr")
+#install.packages("stats")
+#install.packages("ggpubr")
+#install.packages("rstatix")
+#install.packages("stats")
+#install.packages("jmv")
+#install.packages("nlme")
+#install.packages("stargazer")
+#install.packages("sjPlot")
+
+# loading packages
+library(readxl)
+library(dplyr)
+library(stats)
+library(ggpubr)
+library(rstatix)
+library(stats)
+library(jmv)
+library(nlme)
+library(stargazer)
+library(sjPlot)
+
+############################################
+###       1. OPENING THE DATASET        ###
+###########################################
+
+# The dataset is on a .xlsx format. 
+# To open in R, you must download the dataset on your computer and choose the file
+# Choose the database "Inertia_long.xlsx" on your computer
+Data <- readxl::read_xlsx(file.choose())
+dplyr::glimpse(Data)
+str(Data)
+View (Data)
+
+############################################
+###    2. RAW AND CLEAN SUBSETS         ###
+###########################################
+
+# "all_values" column is in characters
+# the following line will transform the column to numeric values
+Data$all_values <- as.numeric(Data$all_values)
+# Check if "$all_values : num"
+str(Data)
+
+# Two subsets are created for each scenario
+# One including all participants in that scenario (raw)
+# Another including only participants who correctly answered the verification question (clean)
+
+# Hotel scenario
+DataHotel_raw <- subset(Data, Data[,16] == "Hotel")
+DataHotel_clean <- subset(Data, Data[,15] == "300")
+# Car scenario
+DataCar_raw <- subset(Data, Data[,16] == "Car")
+DataCar_raw <- subset(DataCar_raw, DataCar_raw[,13] != "NA")
+DataCar_clean <- subset(Data, Data[,15] == "1500")
+# Flyer scenarioD
+DataFlyer_raw <- subset(Data, Data[,16] == "FrequentFlyer")
+DataFlyer_raw <- subset(DataFlyer_raw, DataFlyer_raw[,13] != "NA")
+DataFlyer_clean <- subset(Data, Data[,15] =="5.500 milhas")
+# Fitness scenario
+DataFit_raw <- subset(Data, Data[,16] =="Fitness")
+DataFit_raw <- subset(DataFit_raw, DataFit_raw[,13] != "NA")
+DataFit_clean <- subset(Data, Data [,15] =="30 minutos")
+# Extension scenario
+DataExt_raw <- subset(Data, Data [,16] =="Pucflix" )
+DataExt_raw <- subset(DataExt_raw, DataExt_raw[,13] != "NA")
+DataExt_clean <-  subset(Data, Data [,15] =="1month")
+
+############################################
+###         3. STATISTCAL ANALYSIS      ###
+###########################################
+
+# USING THE RAW SUBSETS ONLY
+
+## Checking Normality ##
+
+# Creating a linear model and QQ plot of residuals
+
+lm_hotel <- stats::lm(all_values ~ Condition, data = DataHotel_raw)
+lm_car <- stats::lm(all_values ~ Condition, data = DataCar_raw)
+lm_flyer <- stats::lm(all_values ~ Condition, data = DataFlyer_raw)
+lm_fitn <- stats::lm(all_values ~ Condition, data = DataFit_raw)
+lm_ext <- stats::lm(all_values ~ Condition, data = DataExt_raw)
+
+ggpubr::ggqqplot(residuals(lm_hotel))
+ggpubr::ggqqplot(residuals(lm_car))
+ggpubr::ggqqplot(residuals(lm_flyer))
+ggpubr::ggqqplot(residuals(lm_fitn))
+ggpubr::ggqqplot(residuals(lm_ext))
+
+#Computing Shapiro-Wilk test of normality
+
+sw_hotel <- rstatix::shapiro_test(residuals(lm_hotel))
+sw_car <- rstatix::shapiro_test(residuals(lm_car))
+sw_flyer <- rstatix::shapiro_test(residuals(lm_flyer))
+sw_fitn <- rstatix::shapiro_test(residuals(lm_fitn))
+sw_ext <- rstatix::shapiro_test(residuals(lm_hotel))
+
+summary(sw_hotel)
+summary(sw_car)
+summary(sw_flyer)
+summary(sw_fitn)
+summary(sw_ext)
+
+# Checking Normality Assumption By condition
+
+
+swg_hotel <- DataHotel_raw %>%
+  rstatix::group_by(Condition) %>%
+  rstatix::shapiro_test(all_values)
+
+swg_car <- DataCar_raw %>%
+  rstatix::group_by(Condition) %>%
+  rstatix::shapiro_test(all_values)
+
+swg_flyer <- DataFlyer_raw %>%
+  rstatix::group_by(Condition) %>%
+  rstatix::shapiro_test(all_values)
+
+swg_fitn <- DataFit_raw %>%
+  rstatix::group_by(Condition) %>%
+  rstatix::shapiro_test(all_values)
+
+swg_ext <- DataExt_raw %>%
+  rstatix::group_by(Condition) %>%
+  rstatix::shapiro_test(all_values)
+ 
+swg_hotel
+swg_car
+swg_flyer
+swg_fitn
+swg_ext
+
+# Checking Equality of Variances
+
+levene_hotel <- DataHotel_raw %>%
+  rstatix::levene_test(all_values ~ Condition)
+
+levene_car  <- DataCar_raw %>%
+  rstatix::levene_test(all_values ~ Condition)
+
+levene_flyer <- DataFlyer_raw %>%
+  rstatix::levene_test(all_values ~ Condition)
+
+levene_fit <- DataFit_raw %>%
+  rstatix::levene_test(all_values ~ Condition)
+
+levene_ext <- DataExt_raw %>%
+  rstatix::levene_test(all_values ~ Condition)
+
+levene_hotel
+levene_car
+levene_flyer
+levene_fit
+levene_ext
+
+# Kruskal Wallis
+
+kw_hotel <- stats::kruskal.test(all_values ~ Condition, 
+                                data = DataHotel_raw)
+
+kw_car <- stats::kruskal.test(all_values ~ Condition, 
+                       data = DataCar_raw)
+
+kw_flyer <- stats::kruskal.test(all_values ~ Condition, 
+                                data = DataFlyer_raw)
+
+kw_fit <- stats::kruskal.test(all_values ~ Condition, 
+                              data = DataFit_raw)
+
+kw_ext <- stats::kruskal.test(all_values ~ Condition, 
+                              data = DataExt_raw)
+
+kw_hotel 
+kw_car 
+kw_flyer 
+kw_fit
+kw_ext
+
+#### KW EFFECT SIZE 
+
+kw_hotel_fx <- DataHotel_raw %>% 
+  rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_car_fx <- DataCar_raw %>%
+  rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_flyer_fx <- DataFlyer_raw %>%
+  rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_fit_fx <- DataFit_raw %>%
+  rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_ext_fx <- DataExt_raw %>% 
+  rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_hotel_fx 
+kw_car_fx 
+kw_flyer_fx
+kw_fit_fx 
+kw_ext_fx
+
+#### Between conditions pairwise comparisons #####
+# Bonferroni multiple comparisons correction was adopted:
+# as we have 3 conditions in each scenario a p-value < 0.016 was stablished as thershold
+
+pc_hotel_raw <- jmv::anovaNP(formula = all_values ~ Condition,
+                              data = DataHotel_raw,
+                              es = TRUE,
+                              pairs = TRUE)
+
+pc_car_raw <- jmv::anovaNP(formula = all_values ~ Condition,
+                            data = DataCar_raw,
+                            es = TRUE,
+                            pairs = TRUE)
+
+
+pc_flyer_raw <- jmv::anovaNP(formula = all_values ~ Condition,
+                              data = DataFlyer_raw,
+                              es = TRUE,
+                              pairs = TRUE)
+
+
+
+pc_fit_raw <- jmv::anovaNP(formula = all_values ~ Condition,
+                            data = DataFit_raw,
+                            es = TRUE,
+                            pairs = TRUE)
+
+
+pc_ext_raw <- jmv::anovaNP(formula = all_values ~ Condition,
+                            data = DataExt_raw,
+                            es = TRUE,
+                            pairs = TRUE)
+
+
+pc_hotel_raw
+pc_car_raw
+pc_flyer_raw
+pc_fit_raw
+pc_ext_raw
+
+# Creating a Box Plot for conditions
+
+bp_hotel <- ggpubr::ggboxplot(DataHotel_raw[,13:14], 
+                              x = "Condition",
+                              y = "all_values")
+
+bp_car  <- ggpubr::ggboxplot(DataCar_raw[,13:14], 
+                             x = "Condition",
+                             y = "all_values")
+
+bp_flyer  <- ggpubr::ggboxplot(DataFlyer_raw[,13:14],
+                               x = "Condition", 
+                               y = "all_values")
+
+bp_fit  <- ggpubr::ggboxplot(DataFit_raw[,13:14],
+                             x = "Condition", 
+                             y = "all_values")
+
+bp_ext  <- ggpubr::ggboxplot(DataExt_raw[,13:14], 
+                             x = "Condition", 
+                             y = "all_values") 
+
+bp_hotel
+bp_car  
+bp_flyer
+bp_fit  
+bp_ext 
+
+
+# Mean and SD for each condition in each scenario
+
+#HOTEL
+stats::aggregate(DataHotel_raw$all_values, 
+            list(DataHotel_raw$Condition), mean)
+stats::aggregate(DataHotel_raw$all_values, 
+            list(DataHotel_raw$Condition), sd)
+
+#CAR
+stats::aggregate(DataCar_raw$all_values, 
+            list(DataCar_raw$Condition), mean)
+stats::aggregate(DataCar_raw$all_values, 
+            list(DataCar_raw$Condition), sd)
+#FLYER
+stats::aggregate(DataFlyer_raw$all_values, 
+            list(DataFlyer_raw$Condition), mean)
+stats::aggregate(DataFlyer_raw$all_values, 
+            list(DataFlyer_raw$Condition), sd)
+
+#FITNESS
+stats::aggregate(DataFit_raw$all_values, 
+            list(DataFit_raw$Condition), mean)
+stats::aggregate(DataFit_raw$all_values, 
+            list(DataFit_raw$Condition), sd)
+
+#EXTENSION
+stats::aggregate(DataExt_raw$all_values, 
+            list(DataExt_raw$Condition), mean)
+stats::aggregate(DataExt_raw$all_values, 
+            list(DataExt_raw$Condition), sd)
+
+#######    END OF RAW ONLY  ######
+
+
+######   Same analysis with "clean" data ####
+
+# Kruskal Wallis
+
+kw_HotelC <- stats::kruskal.test(all_values ~ Condition, 
+                                 data = DataHotel_clean)
+
+kw_CarC <- stats::kruskal.test(all_values ~ Condition, 
+                               data = DataCar_clean)
+
+kw_FlyerC <- stats::kruskal.test(all_values ~ Condition, 
+                                 data = DataFlyer_clean)
+
+kw_FitC <- stats::kruskal.test(all_values ~ Condition, 
+                               data = DataFit_clean)
+
+kw_ExtC <- stats::kruskal.test(all_values ~ Condition, 
+                               data = DataExt_clean)
+
+kw_HotelC
+kw_CarC
+kw_FlyerC
+kw_FitC
+kw_ExtC
+
+#### KW EFFECT SIZE 
+kw_hotel_fx_c <- DataHotel_clean %>% 
+                 rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_car_fx_c <- DataCar_clean %>% 
+               rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_flyer_fx_c <- DataFlyer_clean %>%
+                 rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_fit_fx_c <- DataFit_clean %>% 
+               rstatix::kruskal_effsize(all_values ~ Condition)
+
+kw_ext_fx_c <- DataExt_clean %>% 
+               rstatix::kruskal_effsize(all_values ~ Condition)
+
+
+kw_hotel_fx_c 
+kw_car_fx_c 
+kw_flyer_fx_c
+kw_fit_fx_c 
+kw_ext_fx_c
+
+#### Between conditions pairwise comparisons #####
+
+pc_hotel_c <- jmv::anovaNP(formula = all_values ~ Condition,
+                           data = DataHotel_clean,
+                           es = TRUE,
+                           pairs = TRUE)
+
+
+pc_car_c <- jmv::anovaNP(formula = all_values ~ Condition,
+                         data = DataCar_clean,
+                         es = TRUE,
+                         pairs = TRUE)
+
+
+pc_flyer_c <- jmv::anovaNP(formula = all_values ~ Condition,
+                           data = DataFlyer_clean,
+                           es = TRUE,
+                           pairs = TRUE)
+
+
+pc_fit_c <- jmv::anovaNP(formula = all_values ~ Condition,
+                         data = DataFit_clean,
+                         es = TRUE,
+                         pairs = TRUE)
+
+
+pc_ext_c <- jmv::anovaNP(formula = all_values ~ Condition,
+                         data = DataExt_clean,
+                         es = TRUE,
+                         pairs = TRUE)
+
+pc_hotel_c
+pc_car_c
+pc_flyer_c
+pc_fit_c
+pc_ext_c
+
+
+# Mean and SD for each condition in each scenario "clean data"
+# HOTEL
+stats::aggregate(DataHotel_clean$all_values, 
+            list(DataHotel_clean$Condition), mean)
+stats::aggregate(DataHotel_clean$all_values, 
+            list(DataHotel_clean$Condition), sd)
+#CAR
+stats::aggregate(DataCar_clean$all_values, 
+            list(DataCar_clean$Condition), mean)
+stats::aggregate(DataCar_clean$all_values, 
+            list(DataCar_clean$Condition), sd)
+#FLYER
+stats::aggregate(DataFlyer_clean$all_values, 
+            list(DataFlyer_clean$Condition), mean)
+stats::aggregate(DataFlyer_clean$all_values, 
+            list(DataFlyer_clean$Condition), sd)
+
+#FITNESS
+stats::aggregate(DataFit_clean$all_values, 
+            list(DataFit_clean$Condition), mean)
+stats::aggregate(DataFit_clean$all_values, 
+            list(DataFit_clean$Condition), sd)
+
+#EXTENSION
+stats::aggregate(DataExt_clean$all_values, 
+            list(DataExt_clean$Condition), mean)
+stats::aggregate(DataExt_clean$all_values, 
+            list(DataExt_clean$Condition), sd)
+
+############################################
+###   3. Extension Linear Mixed Models   ###
+############################################
+
+#Excluding missing values
+dados_mixed <- subset(Data, 
+                      Data$Scerio != 'Pucflix')
+dados_mixed <- subset(dados_mixed, 
+                      dados_mixed$all_values != 'NA')
+utils::View(dados_mixed)
+# sample = 1717
+
+#### Model 1: scenarios involving money or not (fixed effect) explicating probability values)
+
+modelo1 <- nlme::lme(all_values ~ Money, 
+                     data = dados_mixed, 
+                     random = ~ 1|ID)
+summary(modelo1, correlation = FALSE)
+
+# Table with results
+stargazer::stargazer(modelo1, type = "text",
+                     digits = 3,
+                     star.cutoffs = c(0.05, 0.01, 0.001),
+                     digit.separator = "")
+sjPlot::tab_model(modelo1)
+
+#### Model 2: money predicting values (fixed effect) and condition as random effect 
+
+modelo2 <- nlme::lme(all_values ~ Money, 
+                     data = dados_mixed, 
+                     random = ~ 1|ID + 1|Condition)
+summary(modelo2, correlation = FALSE)
+
+# Table with results
+stargazer::stargazer(modelo2, type = "text",
+                     digits = 3,
+                     star.cutoffs = c(0.05, 0.01, 0.001),
+                     digit.separator = "")
+sjPlot::tab_model(modelo2)
+
+
+################################################################################
+################################## T-test ###################################### 
+################################################################################
+
+#SCENARIOS WITH MONEY
+# Mean difference between 'control' and 'small difference' conditions 
+stats::t.test(dados_mixed[1:872,]$all_values[dados_mixed$Condition == 'Control Group'],
+              dados_mixed[1:872,]$all_values[dados_mixed$Condition == 'Small Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'big difference' and 'small difference' conditions 
+stats::t.test(dados_mixed[1:872,]$all_values[dados_mixed$Condition == 'Big Diff'],
+              dados_mixed[1:872,]$all_values[dados_mixed$Condition == 'Small Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'control' and big difference' conditions 
+stats::t.test(dados_mixed[1:872,]$all_values[dados_mixed$Condition == 'Control Group'],
+              dados_mixed[1:872,]$all_values[dados_mixed$Condition == 'Big Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+
+#SCENARIOS WITHOUT MONEY
+# Mean difference between 'control' and 'small difference' conditions 
+stats::t.test(dados_mixed[873:1717,]$all_values[dados_mixed$Condition == 'Control Group'],
+              dados_mixed[873:1717,]$all_values[dados_mixed$Condition == 'Small Diff'], 
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'big difference' and 'small difference' conditions 
+stats::t.test(dados_mixed[873:1717,]$all_values[dados_mixed$Condition == 'Big Diff'],
+              dados_mixed[873:1717,]$all_values[dados_mixed$Condition == 'Small Diff'], 
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'control' and big difference' conditions 
+stats::t.test(dados_mixed[873:1717,]$all_values[dados_mixed$Condition == 'Control Group'],
+              dados_mixed[873:1717,]$all_values[dados_mixed$Condition == 'Big Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+
+
+################################################################################
+##################### REPEATED ANALYSIS WITH FILTERED DATA  #################### 
+################################################################################
+
+
+# 'Cleaning' the database - excluding participants that failed to respond the verification question 
+# sample = 1538
+dados_l <- subset(dados_mixed, 
+                  dados_mixed$verific == '300' | dados_mixed$verific == '1500' | dados_mixed$verific == '5.500 milhas' | dados_mixed$verific == '30 minutos')    
+
+
+################################################################################
+############################ Linear Mixed Models  ############################## 
+################################################################################
+
+
+#### Model 1: scenarios involving money or not (fixed effect) explicating probability values)
+modelol1 <- nlme::lme(all_values ~ Money, 
+                      data = dados_l, 
+                      random = ~ 1|ID)
+summary(modelol1, correlation = FALSE)
+
+# Table with results 
+stargazer::stargazer(modelol1, type = "text",
+                     digits = 3,
+                     star.cutoffs = c(0.05, 0.01, 0.001),
+                     digit.separator = "")
+sjPlot::tab_model(modelol1)
+
+#### Model 2: money predicting values (fixed effect) and condition as random effect 
+modelol2 <- nlme::lme(all_values ~ Money, 
+                      data = dados_l, 
+                      random = ~ 1|ID + 1|Condition)
+summary(modelol2, correlation = FALSE)
+
+# Table with results 
+stargazer::stargazer(modelol2, type = "text",
+                     digits = 3,
+                     star.cutoffs = c(0.05, 0.01, 0.001),
+                     digit.separator = "")
+sjPlot::tab_model(modelol2)
+
+
+
+################################################################################
+################################## T-test ###################################### 
+################################################################################
+
+#SCENARIOS WITH MONEY
+# Mean difference between 'control' and 'small difference' conditions 
+stats::t.test(dados_l[1:776,]$all_values[dados_l$Condition == 'Control Group'],
+              dados_l[1:776,]$all_values[dados_l$Condition == 'Small Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'big difference' and 'small difference' conditions 
+stats::t.test(dados_l[1:776,]$all_values[dados_l$Condition == 'Big Diff'],
+              dados_l[1:776,]$all_values[dados_l$Condition == 'Small Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'control' and big difference' conditions 
+stats::t.test(dados_l[1:776,]$all_values[dados_l$Condition == 'Control Group'],
+              dados_l[1:776,]$all_values[dados_l$Condition == 'Big Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+
+#SCENARIOS WITHOUT MONEY
+# Mean difference between 'control' and 'small difference' conditions 
+stats::t.test(dados_l[777:1538,]$all_values[dados_l$Condition == 'Control Group'], 
+              dados_l[777:1538,]$all_values[dados_l$Condition == 'Small Diff'], 
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'big difference' and 'small difference' conditions 
+stats::t.test(dados_l[777:1538,]$all_values[dados_l$Condition == 'Big Diff'],
+              dados_l[777:1538,]$all_values[dados_l$Condition == 'Small Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+# Mean difference between 'control' and big difference' conditions 
+stats::t.test(dados_l[777:1538,]$all_values[dados_l$Condition == 'Control Group'],
+              dados_l[777:1538,]$all_values[dados_l$Condition == 'Big Diff'],
+              alternative = "two.sided",
+              paired = FALSE)
+
+##############################################################
+#### We are proud that you reached the end of our script!! 
+#### Congrats ;)
+#### If you have any doubt or run into problems with 
+#### this script please write to larepsipuc@gmail.com
+#############################################################
+
+#### Citation for all the packages used
+citation("readxl")
+citation("dplyr")
+##citation("utils")
+##citation("stats")
+citation("ggpubr")
+citation("rstatix")
+citation("jmv")
+citation("nlme")
+citation("stargazer")
+citation("sjPlot")
